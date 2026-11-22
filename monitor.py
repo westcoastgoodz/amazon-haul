@@ -60,7 +60,7 @@ class Monitor:
                 return False
             if stock is True:
                 listing.available = True
-        if not self.s.should_alert(
+        if not self.store.should_alert(
             listing.asin,
             listing.price,
             cooldown_hours=self.s.alert_cooldown_hours,
