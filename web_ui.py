@@ -107,11 +107,7 @@ def _try_start_monitor(*, message: str = "Started.") -> str:
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):
-    result = _try_start_monitor(message="Auto-started on boot.")
-    if result == "missing_credentials":
-        _status["last_message"] = (
-            "Idle \u2014 set Keepa API key + Discord webhooks, then Start monitor."
-        )
+    _status["last_message"] = "Idle \u2014 click Start monitor or Run 1 scan now."
     yield
     if _monitor and _is_running():
         _monitor.request_stop()
@@ -271,7 +267,7 @@ document.addEventListener("DOMContentLoaded", function(){ var btn=document.getEl
         <button class="ghost" type="submit">Run 1 scan now</button>
       </form>
     </div>
-    <p class="hint" style="margin-top:8px;">Monitor auto-starts on boot. Settings auto-apply within seconds \u2014 no restart needed.</p>
+    <p class="hint" style="margin-top:8px;">Monitor does not auto-start. Click Start monitor or Run 1 scan now. Settings auto-apply within seconds \u2014 no restart needed.</p>
   </div>
 
   <div class="panel">
