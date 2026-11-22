@@ -21,7 +21,7 @@ from ui_settings import load_ui_settings, save_ui_settings
 
 _monitor = None
 _thread: threading.Thread | None = None
-_status = {"running": False, "stopping": False, "last_message": "Idle"}
+_status = {"running": False, "stopping": False, "scanning": False, "last_message": "Idle"}
 
 AUTH_COOKIE = "ahm_session"
 
@@ -164,6 +164,7 @@ MAJOR_CATEGORIES = [
 PAGE = """<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
+__REFRESH_TAG__
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Amazon Haul Price Monitor</title>
@@ -477,7 +478,9 @@ def home(_: Request) -> str:
     exc_brand = ui.get("exclude_brands", "")
     title_kw = ui.get("title_keywords", "")
     exc_kw = ui.get("exclude_keywords", "")
+    refresh_tag = '<meta http-equiv="refresh" content="5"/>' if _status.get("scanning") else ""
     return _render_page(
+        REFRESH_TAG=refresh_tag,
         STATUS_CLASS=status_class,
         STATUS_LABEL=status_label,
         LAST_MESSAGE=html.escape(_status.get("last_message", "") or "Idle"),
@@ -723,12 +726,16 @@ def once():
         try:
             n = mon.run_once()
             _status["last_message"] = f"One-shot scan done \u2014 {n} alert(s) sent."
+            _status["scanning"] = False
         except Exception as exc:  # noqa: BLE001
             _status["last_message"] = f"Scan error: {exc}"
+            _status["scanning"] = False
         finally:
             mon.close()
+            _status["scanning"] = False
 
     threading.Thread(target=_run, daemon=True).start()
+    _status["scanning"] = True
     _status["last_message"] = "One-shot scan started\u2026"
     return RedirectResponse("/", status_code=303)
 
