@@ -18,15 +18,7 @@ services:
         value: /var/data
       - key: KEEPA_API_KEY
         sync: false
-      - key: UI_PASSWORD
-        sync: false
-      - key: DISCORD_WEBHOOK_50
-        sync: false
-      - key: DISCORD_WEBHOOK_60
-        sync: false
-      - key: DISCORD_WEBHOOK_70
-        sync: false
-      - key: DISCORD_WEBHOOK_80
+      - key: DISCORD_WEBHOOK
         sync: false
       - key: CHANNEL_ENABLED_50
         value: "true"

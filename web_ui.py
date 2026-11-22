@@ -417,6 +417,10 @@ def _display_webhook(ui: dict, tier: int) -> str:
     v = str(ui.get(f"discord_webhook_{tier}") or "").strip()
     if v:
         return v
+    # Fall back to single DISCORD_WEBHOOK env var, then tier-specific.
+    single = (os.getenv("DISCORD_WEBHOOK") or "").strip()
+    if single:
+        return single
     return (os.getenv(f"DISCORD_WEBHOOK_{tier}") or "").strip()
 
 

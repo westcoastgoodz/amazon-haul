@@ -168,11 +168,13 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    # Single webhook for all tiers (client consolidated to one channel).
+    single_wh = _get("DISCORD_WEBHOOK")
     webhooks = {
-        50: _get("DISCORD_WEBHOOK_50"),
-        60: _get("DISCORD_WEBHOOK_60"),
-        70: _get("DISCORD_WEBHOOK_70"),
-        80: _get("DISCORD_WEBHOOK_80"),
+        50: _get("DISCORD_WEBHOOK_50") or single_wh,
+        60: _get("DISCORD_WEBHOOK_60") or single_wh,
+        70: _get("DISCORD_WEBHOOK_70") or single_wh,
+        80: _get("DISCORD_WEBHOOK_80") or single_wh,
     }
     channel_on = {
         50: _get_bool("CHANNEL_ENABLED_50", True),
@@ -180,11 +182,12 @@ def load_settings() -> Settings:
         70: _get_bool("CHANNEL_ENABLED_70", True),
         80: _get_bool("CHANNEL_ENABLED_80", True),
     }
+    single_ping = _get("DISCORD_PING")
     pings = {
-        50: _get("DISCORD_PING_50"),
-        60: _get("DISCORD_PING_60"),
-        70: _get("DISCORD_PING_70"),
-        80: _get("DISCORD_PING_80"),
+        50: _get("DISCORD_PING_50") or single_ping,
+        60: _get("DISCORD_PING_60") or single_ping,
+        70: _get("DISCORD_PING_70") or single_ping,
+        80: _get("DISCORD_PING_80") or single_ping,
     }
 
     keywords = _get_list_str("HAUL_KEYWORDS")
