@@ -736,6 +736,37 @@ def once():
     return RedirectResponse("/", status_code=303)
 
 
+@app.get("/debug-scrape")
+def debug_scrape():
+    """Fetch one Haul search page and return parsed listings (for debugging)."""
+    import json
+    from haul_scraper import HaulScraper, parse_search_html
+    s = load_settings()
+    scraper = HaulScraper(s)
+    try:
+        url = "https://www.amazon.com/s?i=bazaar&k=automotive"
+        html = scraper.fetch_html(url)
+        listings = parse_search_html(html, page_url=url)
+        priced = [x for x in listings if x.price is not None]
+        return PlainTextResponse(
+            "URL: " + url + "\n"
+            "HTML bytes: " + str(len(html)) + "\n"
+            "Listings: " + str(len(listings)) + "\n"
+            "Priced: " + str(len(priced)) + "\n"
+            "Blocked markers: " + str(any(m in html.lower() for m in ("captcha", "robot", "automated access"))) + "\n"
+            "First 5:\n" + "\n".join(
+                f"  {x.asin} ${x.price} {x.title[:60]}" for x in listings[:5]
+            ) + "\n"
+            "First 3 priced:\n" + "\n".join(
+                f"  {x.asin} ${x.price} {x.title[:60]}" for x in priced[:3]
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        return PlainTextResponse("Error: " + str(exc))
+    finally:
+        scraper.close()
+
+
 @app.get("/health")
 def health():
     return PlainTextResponse("ok")

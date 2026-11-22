@@ -117,16 +117,17 @@ class Monitor:
         sent_asins: set[str] = set()
 
         if listings is None:
+            logger.info("Starting Haul scan...")
             try:
                 listings, stats = self.scraper.fetch_all()
             except HaulBlocked as exc:
-                logger.error("Haul scan blocked: %s", exc)
+                logger.error("Haul scan BLOCKED: %s", exc)
                 return 0
             except Exception as exc:  # noqa: BLE001
-                logger.exception("Haul scan failed: %s", exc)
+                logger.exception("Haul scan FAILED: %s", exc)
                 return 0
             logger.info(
-                "Haul scan: %d unique listings (priced=%d, pages=%d/%d, blocked=%d, missing_price=%d)",
+                "Haul scan result: unique=%d priced=%d pages=%d/%d blocked=%d missing_price=%d",
                 stats.get("unique", 0),
                 stats.get("priced", 0),
                 stats.get("pages_ok", 0),
@@ -134,31 +135,45 @@ class Monitor:
                 stats.get("pages_blocked", 0),
                 stats.get("pages_missing_price", 0),
             )
+            if stats.get("unique", 0) == 0:
+                logger.error("No listings found at all - scraper may be blocked")
+                return 0
+            if stats.get("priced", 0) == 0:
+                logger.warning("No prices found - Amazon may be hiding prices for this IP")
 
         if self._stop:
             return 0
 
         # Pre-filter by price + dedupe (unless forced).
         candidates: list[HaulListing] = []
+        skipped_noprice = 0
+        skipped_unavail = 0
+        skipped_dedupe = 0
+        skipped_junk = 0
         for lst in listings or []:
             if self._stop:
                 break
             if not lst.asin or lst.price is None:
+                skipped_noprice += 1
                 continue
             if lst.available is False:
-                logger.debug("Skip %s: unavailable on Haul", lst.asin)
+                skipped_unavail += 1
                 continue
             if force:
                 candidates.append(lst)
                 continue
-            # Lightweight title blocklist before Keepa (we don't have an item yet).
-            # We don't have an item yet, but we can skip obvious junk by title.
             title_l = (lst.title or "").lower()
             if any(b in title_l for b in ("phone case", "screen protector", "keychain", "sticker")):
+                skipped_junk += 1
                 continue
             if not self._prefilter(lst):
+                skipped_dedupe += 1
                 continue
             candidates.append(lst)
+        logger.info(
+            "Prefilter: %d candidates (skipped: no_price=%d, unavailable=%d, junk=%d, dedupe=%d)",
+            len(candidates), skipped_noprice, skipped_unavail, skipped_junk, skipped_dedupe,
+        )
 
         # Sort by Haul price desc so higher-value items get Keepa lookups first.
         candidates.sort(key=lambda x: x.price or 0, reverse=True)
@@ -166,6 +181,7 @@ class Monitor:
         # Enrich.
         asins = [c.asin for c in candidates]
         products = self._enrich_batch(asins)
+        logger.info("Keepa enriched: %d/%d products found", len(products), len(asins))
         if self._stop:
             return 0
 
@@ -188,6 +204,7 @@ class Monitor:
                 continue
             built.append(item)
 
+        logger.info("Built %d alerts after filters", len(built))
         # Group by tier.
         by_tier: dict[int, list[AlertItem]] = {}
         for item in built:
