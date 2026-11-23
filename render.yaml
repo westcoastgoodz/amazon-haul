@@ -37,7 +37,7 @@ services:
       - key: KEEPA_BATCH_SIZE
         value: "40"
       - key: MAX_NEW_KEEPA_LOOKUPS
-        value: "40"
+        value: "60"
       - key: KEEPA_CACHE_DAYS
         value: "7"
       - key: ROUTE_MODE
@@ -55,7 +55,7 @@ services:
       - key: ALLOW_CHEAPER_REPEAT
         value: "true"
       - key: MAX_ALERTS_PER_TIER
-        value: "5"
+        value: "3"
       - key: MIN_ORIGINAL_PRICE
         value: "5"
       - key: MIN_HAUL_PRICE
@@ -69,7 +69,7 @@ services:
       - key: REQUIRE_BRAND
         value: "false"
       - key: EXCLUDE_GENERIC_BRAND
-        value: "true"
+        value: "false"
       - key: MIN_REVIEW_COUNT
         value: "0"
       - key: MIN_RATING
@@ -81,11 +81,11 @@ services:
       - key: INCLUDE_GRAPH
         value: "true"
       - key: HAUL_PAGES
-        value: "2"
+        value: "3"
       - key: HAUL_MAX_ITEMS
         value: "1200"
       - key: HAUL_REQUEST_DELAY
-        value: "1.2"
+        value: "0.8"
       - key: HAUL_TIMEOUT_SEC
         value: "45"
       - key: HAUL_RETRIES
