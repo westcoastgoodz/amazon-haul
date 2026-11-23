@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import random
+import random
 import re
 import time
 from urllib.parse import quote_plus, urlparse, urlencode, parse_qsl, urlunparse
@@ -33,11 +34,13 @@ _HEADERS = {
     "Upgrade-Insecure-Requests": "1",
 }
 
-_DEFAULT_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/124.0.0.0 Safari/537.36"
-)
+_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+]
+_DEFAULT_UA = _USER_AGENTS[0]
 
 _BLOCK_MARKERS = (
     "enter the characters you see below",
@@ -45,6 +48,7 @@ _BLOCK_MARKERS = (
     "to discuss automated access to amazon data",
     "api-services-support@amazon.com",
     "type the characters you see in this image",
+    "sorry, something went wrong",
 )
 
 _PRICE_RE = re.compile(r"\$\s?([0-9][0-9,]*(?:\.[0-9]{2})?)")
@@ -81,7 +85,9 @@ class HaulScraper:
             self._use_curl = False
 
     def _headers(self) -> dict:
-        ua = (self.s.scraper_user_agent or "").strip() or _DEFAULT_UA
+        ua = (self.s.scraper_user_agent or "").strip()
+        if not ua:
+            ua = random.choice(_USER_AGENTS)
         return {**_HEADERS, "User-Agent": ua}
 
     def _proxies(self):
@@ -186,8 +192,12 @@ class HaulScraper:
     # ------------------------------------------------------------------
     def fetch_html(self, url: str) -> str:
         last: Exception | None = None
-        for attempt in range(self.s.haul_retries + 1):
+        for attempt in range(self.s.haul_retries + 2):
             try:
+                # Refresh session on retry to clear cookies/state
+                if attempt > 0:
+                    self._init_session()
+                    time.sleep(1.0 + attempt)
                 if self._use_curl:
                     resp = self._session.get(
                         url,
@@ -210,32 +220,39 @@ class HaulScraper:
                     text = resp.text or ""
             except Exception as exc:  # noqa: BLE001
                 last = exc
-                if attempt < self.s.haul_retries:
+                if attempt < self.s.haul_retries + 1:
                     time.sleep(2.0 * (attempt + 1))
                     continue
                 raise
 
             if status in (429, 503):
                 last = HaulBlocked(f"HTTP {status}")
-                if attempt < self.s.haul_retries:
+                if attempt < self.s.haul_retries + 1:
                     time.sleep(5.0 * (attempt + 1))
                     continue
                 raise last
 
             if status >= 400:
                 last = HaulBlocked(f"HTTP {status}")
-                if attempt < self.s.haul_retries:
+                if attempt < self.s.haul_retries + 1:
                     time.sleep(2.0 * (attempt + 1))
                     continue
                 raise last
 
             low = text.lower()
             if any(m in low for m in _BLOCK_MARKERS):
-                raise HaulBlocked("captcha / automated-access page")
+                # Don't raise immediately - check if page still has listings
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(text, "html.parser")
+                if len(soup.select("div[data-asin]")) > 0:
+                    # Page has listings despite block marker - probably false positive
+                    pass
+                else:
+                    raise HaulBlocked("captcha / automated-access page")
 
             if len(text) < 5000:
                 last = HaulBlocked(f"short response ({len(text)} bytes)")
-                if attempt < self.s.haul_retries:
+                if attempt < self.s.haul_retries + 1:
                     time.sleep(2.0 * (attempt + 1))
                     continue
                 raise last

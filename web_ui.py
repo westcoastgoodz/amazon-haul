@@ -264,7 +264,10 @@ document.addEventListener("DOMContentLoaded", function(){ var btn=document.getEl
       <form method="post" action="/start" style="display:inline">__START_BTN__</form>
       <form method="post" action="/stop" style="display:inline">__STOP_BTN__</form>
       <form method="post" action="/once" style="display:inline">
-        <button class="ghost" type="submit">Run 1 scan now</button>
+        <button class="primary" type="submit">Run 1 scan now</button>
+      </form>
+      <form method="post" action="/force-scan" style="display:inline">
+        <button class="ghost" type="submit">Force scan (ignore dedup)</button>
       </form>
     </div>
     <p class="hint" style="margin-top:8px;">Monitor does not auto-start. Click Start monitor or Run 1 scan now. Settings auto-apply within seconds \u2014 no restart needed.</p>
@@ -765,6 +768,75 @@ def debug_scrape():
         return PlainTextResponse("Error: " + str(exc))
     finally:
         scraper.close()
+
+
+@app.get("/debug-scan")
+def debug_scan():
+    """Run a quick scan (1 page) synchronously and return results as text."""
+    import io
+    import contextlib
+    from monitor import Monitor
+
+    buf = io.StringIO()
+    handler = logging.StreamHandler(buf)
+    handler.setLevel(logging.DEBUG)
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.DEBUG)
+
+    try:
+        s = load_settings()
+        if not s.keepa_api_key:
+            return PlainTextResponse("ERROR: KEEPA_API_KEY not set")
+        if not s.webhooks:
+            return PlainTextResponse("ERROR: No webhooks configured. s.webhooks=" + str(s.webhooks) + " s.tiers=" + str(s.tiers))
+
+        # Temporarily limit to 1 page for speed
+        orig_pages = s.haul_pages
+        s.haul_pages = 1
+        mon = Monitor(s)
+        try:
+            n = mon.run_once()
+            result = buf.getvalue()
+            result += "\n\n=== RESULT: " + str(n) + " alert(s) sent ===\n"
+            result += "Webhooks: " + str(list(s.webhooks.keys())) + "\n"
+            result += "Tiers: " + str(s.tiers) + "\n"
+            result += "Last message: " + str(_status.get("last_message", "")) + "\n"
+            return PlainTextResponse(result)
+        except Exception as exc:  # noqa: BLE001
+            import traceback
+            result = buf.getvalue()
+            result += "\n\n=== EXCEPTION ===\n" + traceback.format_exc()
+            return PlainTextResponse(result)
+        finally:
+            mon.close()
+            s.haul_pages = orig_pages
+    finally:
+        root_logger.removeHandler(handler)
+
+
+@app.post("/force-scan")
+def force_scan():
+    from monitor import Monitor
+
+    s = load_settings()
+    if not s.keepa_api_key or not s.tiers:
+        _status["last_message"] = "Cannot scan \u2014 set Keepa API key + Discord webhooks."
+        return RedirectResponse("/", status_code=303)
+
+    def _run() -> None:
+        mon = Monitor(s)
+        try:
+            n = mon.run_once(force=True)
+            _status["last_message"] = f"Force scan done \u2014 {n} alert(s) sent (dedup bypassed)."
+        except Exception as exc:  # noqa: BLE001
+            _status["last_message"] = f"Scan error: {exc}"
+        finally:
+            mon.close()
+
+    threading.Thread(target=_run, daemon=True).start()
+    _status["last_message"] = "Force scan started\u2026"
+    return RedirectResponse("/", status_code=303)
 
 
 @app.get("/health")
