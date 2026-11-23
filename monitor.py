@@ -49,14 +49,14 @@ class Monitor:
         if not listing.asin or listing.price is None or listing.price <= 0:
             return False
         if listing.available is False:
-            logger.debug("Skip %s: unavailable on Haul (tile)", listing.asin)
+            logger.info("Skip %s: unavailable on Haul (tile)", listing.asin)
             return False
         if getattr(self.s, "verify_haul_stock", False) and listing.available is None:
             from haul_scraper import check_haul_stock
 
             stock = check_haul_stock(self.scraper, listing.asin, listing.url)
             if stock is False:
-                logger.debug("Skip %s: Haul stock check failed", listing.asin)
+                logger.info("Skip %s: Haul stock check failed", listing.asin)
                 return False
             if stock is True:
                 listing.available = True
@@ -196,11 +196,11 @@ class Monitor:
                 continue
             ok, _reason = passes_filters(item, self.s)
             if not ok:
-                logger.debug("Skip %s: %s", lst.asin, _reason)
+                logger.info("Skip %s: %s", lst.asin, _reason)
                 continue
             ok, _reason = passes_price_error_quality(item, product, self.s)
             if not ok:
-                logger.debug("Skip %s (quality): %s", lst.asin, _reason)
+                logger.info("Skip %s (quality): %s", lst.asin, _reason)
                 continue
             built.append(item)
 
