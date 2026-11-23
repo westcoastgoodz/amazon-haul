@@ -57,17 +57,17 @@ services:
       - key: MAX_ALERTS_PER_TIER
         value: "5"
       - key: MIN_ORIGINAL_PRICE
-        value: "15"
+        value: "5"
       - key: MIN_HAUL_PRICE
-        value: "3"
+        value: "1"
       - key: MAX_HAUL_PRICE
-        value: "25"
+        value: "50"
       - key: MIN_SAVINGS
-        value: "8"
+        value: "3"
       - key: MIN_TRACKING_DAYS
-        value: "60"
+        value: "0"
       - key: REQUIRE_BRAND
-        value: "true"
+        value: "false"
       - key: EXCLUDE_GENERIC_BRAND
         value: "true"
       - key: MIN_REVIEW_COUNT
@@ -95,6 +95,8 @@ services:
       - key: HAUL_KEYWORDS
         value: "automotive,car accessories,tools,home improvement,electronics,kitchen,office,pet supplies,sports and outdoors,industrial and scientific"
       - key: EXCLUDE_CATEGORIES
-        value: "7141123011,11055981,283155,133140011,165793011,2617941011,2335752011,468642,2625373011,229534,16310101,165796011,3367581,3290252011,5174"
+        value: ""
+      - key: EXCLUDE_BOOKS
+        value: "false"
       - key: LOG_LEVEL
         value: "INFO"
