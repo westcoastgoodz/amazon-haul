@@ -83,7 +83,7 @@ services:
       - key: HAUL_PAGES
         value: "3"
       - key: HAUL_MAX_ITEMS
-        value: "1200"
+        value: "6000"
       - key: HAUL_REQUEST_DELAY
         value: "0.8"
       - key: HAUL_TIMEOUT_SEC
@@ -93,7 +93,12 @@ services:
       - key: PROXY_URL
         sync: false
       - key: HAUL_KEYWORDS
-        value: "automotive,car accessories,tools,home improvement,electronics,kitchen,office,pet supplies,sports and outdoors,industrial and scientific"
+        value: "automotive,car accessories,car parts,auto parts,tools,home improvement,electronics,kitchen,office,pet supplies,sports and outdoors,industrial and scientific,garden,home and garden,furniture,lighting,hardware,appliances,computers,cell phones,beauty,health,motorcycle,ATV,boat,RV,truck,car audio,car electronics,car tools,garage,workshop,power tools,hand tools,plumbing,electrical,fasteners,adhesives,paint,lawn and garden,outdoor,patio,grill,pool,cleaning,storage,organization"
+      - key: HAUL_CATEGORY_NODES
+        value: "15684181,2972638011,228013,1055398,172282"
+      - key: WATCHLIST_ASINS
+        value: "B0G3VXR3QX,B0G42PX27P,B0G1C6X3MW,B0G5X14M3D"
+
       - key: EXCLUDE_CATEGORIES
         value: ""
       - key: EXCLUDE_BOOKS

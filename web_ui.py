@@ -349,6 +349,10 @@ document.addEventListener("DOMContentLoaded", function(){ var btn=document.getEl
         <span>Haul keywords (comma-separated)</span>
         <textarea name="haul_keywords" rows="3" placeholder="automotive, tools, electronics...">__KEYWORDS__</textarea>
       </label>
+      <label class="field" style="margin-top:14px">
+        <span>Watchlist ASINs (one per line or comma) — checked directly even if Haul search misses them</span>
+        <textarea name="watchlist_asins" rows="3" placeholder="B0G3VXR3QX, B0G42PX27P, ...">__WATCHLIST__</textarea>
+      </label>
       <div class="grid" style="margin-top:14px;">
         <label class="field">
           <span>Include categories (comma IDs)</span>
@@ -459,6 +463,7 @@ def home(_: Request) -> str:
         keepa_hint = "No key saved yet."
 
     keywords_val = ui.get("haul_keywords") or ",".join(s.haul_keywords)
+    watchlist_val = ui.get("watchlist_asins") or ",".join(getattr(s, "watchlist_asins", []) or [])
     inc_cat = ui.get("include_categories", "")
     exc_cat = ui.get("exclude_categories", "")
     inc_set = set(str(inc_cat).replace(" ", "").split(",")) if inc_cat else set()
@@ -494,6 +499,7 @@ def home(_: Request) -> str:
         MIN_SAVINGS=str(ui["min_savings"]),
         MIN_HAUL=str(ui["min_haul_price"]),
         KEYWORDS=html.escape(str(keywords_val)),
+        WATCHLIST=html.escape(str(watchlist_val)),
         CAT_CHECKBOXES=cat_cb,
         INC_CAT=html.escape(str(inc_cat)),
         EXC_CAT=html.escape(str(exc_cat)),
@@ -644,6 +650,7 @@ def save(
     min_savings: float = Form(8.0),
     min_haul_price: float = Form(3.0),
     haul_keywords: str = Form(""),
+    watchlist_asins: str = Form(""),
     include_categories: str = Form(""),
     exclude_categories: str = Form(""),
     include_brands: str = Form(""),
@@ -667,6 +674,7 @@ def save(
             "min_savings": min_savings,
             "min_haul_price": min_haul_price,
             "haul_keywords": haul_keywords,
+            "watchlist_asins": watchlist_asins.strip(),
             "include_categories": _merge_cats(include_categories.strip(), inc_cat_cb),
             "exclude_categories": _merge_cats(exclude_categories.strip(), exc_cat_cb),
             "include_brands": include_brands.strip(),

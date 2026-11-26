@@ -114,6 +114,16 @@ class HaulScraper:
                 if page > 1:
                     u += f"&page={page}"
                 urls.append(u)
+        for node in getattr(self.s, "haul_category_nodes", []) or []:
+            try:
+                node = int(node)
+            except (TypeError, ValueError):
+                continue
+            for page in range(1, self.s.haul_pages + 1):
+                u = f"https://www.amazon.com/s?i=bazaar&rh=n%3A{node}"
+                if page > 1:
+                    u += f"&page={page}"
+                urls.append(u)
         for extra in self.s.haul_extra_urls:
             extra = (extra or "").strip()
             if not extra:
@@ -182,6 +192,27 @@ class HaulScraper:
 
             if i < len(urls) - 1:
                 time.sleep(self.s.haul_request_delay + random.uniform(0.0, 0.4))
+
+        # Watchlist: check specific product pages directly (finds items Haul search
+        # does not index). These are added even if they were not in search results.
+        for asin in getattr(self.s, "watchlist_asins", []) or []:
+            url = f"https://www.amazon.com/dp/{asin}?s=bazaar&psc=1"
+            try:
+                html = self.fetch_html(url)
+            except Exception as exc:  # noqa: BLE001
+                logger.info("Watchlist page failed %s: %s", asin, str(exc)[:80])
+                continue
+            item = parse_product_page(html, asin, page_url=url)
+            if item is None:
+                logger.info("Watchlist %s: could not parse Haul product page", asin)
+                continue
+            stats["listings"] += 1
+            if item.price is not None:
+                stats["priced"] += 1
+            prev = by_asin.get(item.asin)
+            if prev is None or (item.price is not None and (prev.price is None or item.price < prev.price)):
+                by_asin[item.asin] = item
+            time.sleep(self.s.haul_request_delay + random.uniform(0.0, 0.4))
 
         out = list(by_asin.values())
         stats["unique"] = len(out)
@@ -434,3 +465,78 @@ def check_haul_stock(scraper, asin, url):
     if "add to cart" in low or "add-to-cart" in low:
         return True
     return None
+
+
+def parse_product_page(html: str, asin: str, page_url: str = ""):
+    """Parse a Haul product page into a HaulListing (for the watchlist)."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+
+    title = ""
+    el = soup.select_one("#productTitle") or soup.select_one("#title") or soup.select_one("h1")
+    if el:
+        title = el.get_text(" ", strip=True)
+    if not title:
+        og = soup.select_one('meta[property="og:title"]')
+        if og:
+            title = (og.get("content") or "").strip()
+
+    price = None
+    for p in soup.select("#corePrice_feature_div span.a-price, #corePriceDisplay_desktop_feature_div span.a-price, span.a-price"):
+        classes = " ".join(p.get("class") or [])
+        if "a-text-price" in classes:
+            continue
+        off = p.select_one("span.a-offscreen")
+        if off:
+            price = _money(off.get_text(" ", strip=True))
+            if price is not None:
+                break
+    if price is None:
+        price = _money(soup.get_text(" ", strip=True))
+
+    image_url = ""
+    img = soup.select_one("#landingImage") or soup.select_one("img#main-image") or soup.select_one("img.a-dynamic-image")
+    if img:
+        image_url = (img.get("src") or img.get("data-old-hires") or "").strip()
+
+    rating = None
+    r = soup.select_one("#acrPopover span.a-icon-alt") or soup.select_one("span.a-icon-alt")
+    if r:
+        m = _RATING_RE.search(r.get_text(" ", strip=True))
+        if m:
+            try:
+                rating = float(m.group(1))
+            except ValueError:
+                pass
+
+    reviews = None
+    rv = soup.select_one("#acrCustomerReviewText")
+    if rv:
+        m = _REVIEWS_RE.search(rv.get_text(" ", strip=True))
+        if m:
+            try:
+                reviews = int(m.group(1).replace(",", ""))
+            except ValueError:
+                pass
+
+    low = html.lower()
+    available = None
+    if "currently unavailable" in low or "temporarily out of stock" in low:
+        available = False
+    elif "add to cart" in low or "add-to-cart" in low:
+        available = True
+
+    if not title and price is None:
+        return None
+
+    return HaulListing(
+        asin=asin,
+        title=title or asin,
+        price=price,
+        image_url=image_url,
+        rating=rating,
+        review_count=reviews,
+        url=page_url or f"https://www.amazon.com/dp/{asin}?s=bazaar&psc=1",
+        source=page_url,
+        available=available,
+    )

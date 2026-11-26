@@ -16,6 +16,7 @@ DEFAULTS: dict[str, Any] = {
     "min_savings": 8.0,
     "min_haul_price": 3.0,
     "haul_keywords": "",
+    "watchlist_asins": "",
     "include_categories": "",
     "exclude_categories": "",
     "include_brands": "",
@@ -184,6 +185,13 @@ def apply_ui_to_settings(settings) -> None:
     settings.reject_promotions = bool(ui.get("reject_promotions", False))
     settings.reject_business = bool(ui.get("reject_business", False))
     settings.exclude_books = bool(ui.get("exclude_books", True))
+
+    wl = str(ui.get("watchlist_asins") or "").strip()
+    if wl:
+        settings.watchlist_asins = [
+            a.strip().upper() for a in wl.replace(";", ",").replace("\n", ",").split(",")
+            if a.strip()
+        ]
 
     key = str(ui.get("keepa_api_key") or "").strip()
     if key:

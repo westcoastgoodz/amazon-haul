@@ -113,6 +113,8 @@ class Settings:
     # --- Haul scraper -----------------------------------------
     haul_keywords: list[str] = field(default_factory=list)
     haul_extra_urls: list[str] = field(default_factory=list)
+    haul_category_nodes: list[int] = field(default_factory=list)
+    watchlist_asins: list[str] = field(default_factory=list)
     haul_pages: int = 2
     haul_max_items: int = 1200
     haul_request_delay: float = 1.2
@@ -222,7 +224,9 @@ def load_settings() -> Settings:
 
         haul_keywords=keywords,
         haul_extra_urls=[u.strip() for u in _get("HAUL_EXTRA_URLS").replace(";", ",").split(",") if u.strip()],
-        haul_pages=max(1, min(10, _get_int("HAUL_PAGES", 2))),
+        haul_category_nodes=_get_list_int("HAUL_CATEGORY_NODES"),
+        watchlist_asins=[a.strip().upper() for a in _get("WATCHLIST_ASINS").replace(";", ",").split(",") if a.strip()],
+        haul_pages=max(1, min(15, _get_int("HAUL_PAGES", 2))),
         haul_max_items=max(50, _get_int("HAUL_MAX_ITEMS", 1200)),
         haul_request_delay=max(0.2, _get_float("HAUL_REQUEST_DELAY", 1.2)),
         haul_timeout_sec=max(10, _get_int("HAUL_TIMEOUT_SEC", 45)),
